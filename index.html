@@ -1,190 +1,316 @@
-const express = require('express');
-const Database = require('better-sqlite3');
-const cors = require('cors');
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小懒图书馆 | 双模管理系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: linear-gradient(145deg, #e0eaf5 0%, #cfdfed 100%); min-height: 100vh; padding: 20px; }
+        .app-container { max-width: 1400px; margin: 0 auto; }
+        
+        .login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .login-card {
+            background: white; border-radius: 48px; width: 90%; max-width: 460px;
+            padding: 32px 28px; text-align: center;
+        }
+        .login-card h2 { background: linear-gradient(135deg, #1f5e3a, #2c7a4d); background-clip: text; -webkit-background-clip: text; color: transparent; margin-bottom: 8px; }
+        .role-tabs { display: flex; gap: 12px; margin: 20px 0; background: #f0f4f9; padding: 5px; border-radius: 60px; }
+        .role-tab { flex: 1; padding: 10px; border-radius: 40px; font-weight: 600; cursor: pointer; background: transparent; border: none; }
+        .role-tab.active { background: #1f5e3a; color: white; }
+        .input-field { margin-bottom: 20px; text-align: left; }
+        .input-field input { width: 100%; padding: 14px 16px; border: 1px solid #cbdde9; border-radius: 32px; }
+        .login-btn { width: 100%; background: #1f5e3a; padding: 14px; border-radius: 40px; color: white; font-weight: bold; border: none; cursor: pointer; }
+        .error-msg { color: #c2412c; font-size: 0.75rem; margin-top: 12px; display: none; }
+        
+        .main-system { display: none; }
+        .mode-header { background: white; border-radius: 28px; padding: 20px 28px; margin-bottom: 28px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+        .mode-switch { display: flex; gap: 12px; background: #f0f4f9; padding: 6px; border-radius: 48px; }
+        .mode-btn { padding: 8px 24px; border-radius: 40px; background: transparent; border: none; cursor: pointer; }
+        .mode-btn.active { background: #1f5e3a; color: white; }
+        .stats-row { display: flex; gap: 20px; background: #f8fafc; border-radius: 48px; padding: 8px 24px; }
+        .card { background: white; border-radius: 24px; padding: 20px 24px; margin-bottom: 24px; }
+        .flex-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+        .input-group { flex: 1; min-width: 160px; }
+        .input-group label { font-size: 0.7rem; font-weight: 600; color: #5b7a9a; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid #cfdfed; border-radius: 16px; }
+        button { background: #1f5e3a; border: none; padding: 10px 20px; border-radius: 40px; color: white; cursor: pointer; }
+        .btn-outline { background: white; color: #1f5e3a; border: 1px solid #cbdde9; }
+        .btn-danger { background: #c2412c; }
+        .btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+        .table-wrapper { overflow-x: auto; border-radius: 24px; background: white; }
+        .book-table { width: 100%; border-collapse: collapse; }
+        .book-table th, .book-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eef2f6; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; }
+        .status-available { background: #dff3e4; color: #1f6e43; }
+        .status-borrowed { background: #ffe6e2; color: #bc4e2c; }
+        .record-log { max-height: 260px; overflow-y: auto; background: #fafcfd; border-radius: 20px; }
+        .record-item { padding: 10px 16px; border-bottom: 1px solid #ecf3f8; display: flex; justify-content: space-between; }
+        .logout-btn { background: #e2e8f0; color: #2c3e50; margin-left: 10px; }
+        footer { text-align: center; font-size: 0.7rem; margin-top: 20px; color: #4f6f8f; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div id="loginModal" class="login-overlay">
+        <div class="login-card">
+            <h2>📚 小懒图书馆</h2>
+            <p>请登录以访问管理系统</p>
+            <div class="role-tabs" id="roleTabs">
+                <button class="role-tab active" data-role="student">👩‍🎓 学生入口</button>
+                <button class="role-tab" data-role="admin">👨‍💼 管理员入口</button>
+            </div>
+            <div class="input-field"><label>账号</label><input type="text" id="loginUsername" placeholder="请输入账号"></div>
+            <div class="input-field"><label>密码</label><input type="password" id="loginPassword" placeholder="请输入密码"></div>
+            <button id="doLoginBtn" class="login-btn">登录系统</button>
+            <div id="loginErrorMsg" class="error-msg"></div>
+            <div style="margin-top: 20px; font-size: 0.7rem; background: #f4f9fe; padding: 8px; border-radius: 28px;">
+                ⚡ 学生: student / 123456 &nbsp;&nbsp;|&nbsp;&nbsp; 管理员: admin / admin123
+            </div>
+        </div>
+    </div>
 
-const app = express();
-const port = process.env.PORT || 3000;
+    <div id="mainSystem" class="main-system">
+        <div class="mode-header">
+            <div class="title-area"><h1>📚 小懒图书馆 | 双模管理系统</h1><p id="welcomeUserMsg"></p></div>
+            <div style="display: flex; gap: 12px;">
+                <div class="mode-switch">
+                    <button id="studentModeBtn" class="mode-btn active">👩‍🎓 学生模式</button>
+                    <button id="adminModeBtn" class="mode-btn">👨‍💼 管理员模式</button>
+                </div>
+                <button id="logoutSystemBtn" class="logout-btn">🚪 退出登录</button>
+            </div>
+            <div class="stats-row">
+                <div class="stat">📚 总藏书: <span id="totalBooksSpan">0</span></div>
+                <div class="stat">✅ 可借: <span id="availBooksSpan">0</span></div>
+                <div class="stat">📖 借出: <span id="borrowedBooksSpan">0</span></div>
+            </div>
+        </div>
 
-app.use(cors());
-app.use(express.json());
+        <div id="studentPanel">
+            <div class="card">
+                <h3>🔍 检索图书</h3>
+                <div class="flex-row">
+                    <div class="input-group" style="flex:3;"><input type="text" id="studentSearchInput" placeholder="输入关键字检索..."></div>
+                    <div class="input-group" style="flex:1;"><select id="studentStatusFilter"><option value="all">全部状态</option><option value="available">可借阅</option><option value="borrowed">借出中</option></select></div>
+                    <button id="studentResetBtn" class="btn-outline">重置</button>
+                </div>
+            </div>
+            <div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th><th>操作</th></thead><tbody id="studentBookTableBody"></tbody></table></div>
+            <div class="card"><h4>📌 我的借阅记录</h4><div id="studentBorrowRecords" class="record-log"></div></div>
+        </div>
 
-// 连接数据库（better-sqlite3 是同步的）
-const db = new Database('/tmp/library.db');
+        <div id="adminPanel" style="display: none;">
+            <div class="card"><h3>📌 图书管理</h3>
+                <div class="flex-row"><div class="input-group"><label>书名</label><input type="text" id="adminBookTitle"></div><div class="input-group"><label>作者</label><input type="text" id="adminBookAuthor"></div><div class="input-group"><label>ISBN</label><input type="text" id="adminBookIsbn"></div><button id="adminAddBookBtn">➕ 添加图书</button></div>
+                <div class="flex-row" style="margin-top:16px;"><div class="input-group"><label>按书名/ISBN删除</label><input type="text" id="adminDeleteInput"></div><button id="adminDeleteBookBtn" class="btn-danger">🗑️ 删除图书</button></div>
+            </div>
+            <div class="card"><h3>📜 全馆借阅记录</h3><div id="allBorrowRecords" class="record-log"></div></div>
+            <div class="card"><h3>📚 图书库存总览</h3><div class="flex-row"><div class="input-group"><input type="text" id="adminSearchInput" placeholder="搜索图书..."></div><button id="adminRefreshBtn" class="btn-outline">刷新</button></div><div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th></tr></thead><tbody id="adminBookTableBody"></tbody></table></div></div>
+        </div>
+        <footer>⚡ 数据云端存储，借阅记录永久保存</footer>
+    </div>
+</div>
 
-// 创建表
-db.exec(`
-    CREATE TABLE IF NOT EXISTS books (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        author TEXT NOT NULL,
-        isbn TEXT,
-        status TEXT DEFAULT 'available',
-        borrower TEXT DEFAULT ''
-    )
-`);
-
-db.exec(`
-    CREATE TABLE IF NOT EXISTS borrow_records (
-        id TEXT PRIMARY KEY,
-        book_id TEXT,
-        book_title TEXT,
-        borrower_name TEXT,
-        borrow_date TEXT,
-        return_date TEXT
-    )
-`);
-
-// 用户表
-db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        nickname TEXT,
-        role TEXT DEFAULT 'student',
-        created_at TEXT
-    )
-`);
-
-// 检查并插入默认管理员和学生（如果不存在）
-const adminExists = db.prepare(`SELECT * FROM users WHERE username = 'admin'`).get();
-if (!adminExists) {
-    const insert = db.prepare(`INSERT INTO users (id, username, password, nickname, role, created_at) VALUES (?, ?, ?, ?, ?, ?)`);
-    insert.run('user1', 'admin', 'admin123', '系统管理员', 'admin', new Date().toISOString());
-    insert.run('user2', 'student', '123456', '小懒同学', 'student', new Date().toISOString());
-    console.log('✅ 已添加默认用户: admin / student');
-}
-
-// 检查并插入示例图书（如果表是空的）
-const bookCount = db.prepare(`SELECT COUNT(*) as count FROM books`).get();
-if (bookCount.count === 0) {
-    const insert = db.prepare(`INSERT INTO books (id, title, author, isbn, status, borrower) VALUES (?, ?, ?, ?, ?, ?)`);
-    const sampleBooks = [
-        ['book1', '深入理解计算机系统', 'Randal E. Bryant', '9787111544937', 'available', ''],
-        ['book2', '你当像鸟飞往你的山', '塔拉·韦斯特弗', '9787544291165', 'available', ''],
-        ['book3', '百年孤独', '加西亚·马尔克斯', '9787544253995', 'available', ''],
-        ['book4', 'JavaScript高级程序设计', 'Nicholas C. Zakas', '9787115275790', 'available', ''],
-        ['book5', '三体：黑暗森林', '刘慈欣', '9787229043353', 'available', '']
-    ];
-    sampleBooks.forEach(book => insert.run(book));
-    console.log('✅ 已添加示例图书');
-}
-
-// ---------- API 接口 ----------
-
-// 1. 获取所有图书
-app.get('/api/books', (req, res) => {
-    const rows = db.prepare(`SELECT * FROM books`).all();
-    res.json(rows);
-});
-
-// 2. 添加图书
-app.post('/api/books', (req, res) => {
-    const { id, title, author, isbn } = req.body;
-    const stmt = db.prepare(`INSERT INTO books (id, title, author, isbn, status, borrower) VALUES (?, ?, ?, ?, 'available', '')`);
-    stmt.run(id, title, author, isbn);
-    res.json({ success: true });
-});
-
-// 3. 删除图书
-app.delete('/api/books/:id', (req, res) => {
-    const { id } = req.params;
-    db.prepare(`DELETE FROM books WHERE id = ?`).run(id);
-    res.json({ success: true });
-});
-
-// 4. 借阅图书
-app.put('/api/books/:id/borrow', (req, res) => {
-    const { id } = req.params;
-    const { borrowerName, borrowDate } = req.body;
-    const book = db.prepare(`SELECT * FROM books WHERE id = ?`).get(id);
-    if (!book || book.status !== 'available') {
-        return res.status(400).json({ error: '图书不可借' });
+<script>
+    const API_URL = 'https://xiaolan-library-production-0e34.up.railway.app/api';
+    let currentUser = null; // { username, role, displayName }
+    
+    async function apiCall(url, options) {
+        const res = await fetch(API_URL + url, options);
+        return res.json();
     }
-    db.prepare(`UPDATE books SET status = 'borrowed', borrower = ? WHERE id = ?`).run(borrowerName, id);
-    const recordId = Date.now() + '-' + Math.random().toString(36);
-    db.prepare(`INSERT INTO borrow_records (id, book_id, book_title, borrower_name, borrow_date, return_date) VALUES (?, ?, ?, ?, ?, NULL)`).run(recordId, id, book.title, borrowerName, borrowDate);
-    res.json({ success: true });
-});
-
-// 5. 归还图书
-app.put('/api/books/:id/return', (req, res) => {
-    const { id } = req.params;
-    const { returnDate } = req.body;
-    const book = db.prepare(`SELECT * FROM books WHERE id = ?`).get(id);
-    if (!book || book.status !== 'borrowed') {
-        return res.status(400).json({ error: '图书未借出' });
+    
+    async function login(username, password, role) {
+        return await apiCall('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, role })
+        });
     }
-    db.prepare(`UPDATE books SET status = 'available', borrower = '' WHERE id = ?`).run(id);
-    db.prepare(`UPDATE borrow_records SET return_date = ? WHERE book_id = ? AND return_date IS NULL`).run(returnDate, id);
-    res.json({ success: true });
-});
-
-// 6. 获取所有借阅记录
-app.get('/api/records', (req, res) => {
-    const rows = db.prepare(`SELECT * FROM borrow_records ORDER BY borrow_date DESC`).all();
-    res.json(rows);
-});
-
-// 7. 获取某个用户的借阅记录
-app.get('/api/records/:username', (req, res) => {
-    const { username } = req.params;
-    const rows = db.prepare(`SELECT * FROM borrow_records WHERE borrower_name = ? ORDER BY borrow_date DESC`).all(username);
-    res.json(rows);
-});
-
-// 8. 登录验证
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    const user = db.prepare(`SELECT * FROM users WHERE username = ? AND password = ?`).get(username, password);
-    if (user) {
-        res.json({ success: true, role: user.role, displayName: user.nickname || user.username, username: user.username });
-    } else {
-        res.json({ success: false, message: '账号或密码错误' });
+    
+    async function loadBooks() {
+        const res = await fetch(API_URL + '/books');
+        return await res.json();
     }
-});
-
-// 9. 注册新用户
-app.post('/api/register', (req, res) => {
-    const { username, password, nickname } = req.body;
-    if (!username || !password) {
-        return res.json({ success: false, message: '用户名和密码不能为空' });
+    
+    async function updateStats() {
+        const books = await loadBooks();
+        document.getElementById('totalBooksSpan').innerText = books.length;
+        document.getElementById('availBooksSpan').innerText = books.filter(b => b.status === 'available').length;
+        document.getElementById('borrowedBooksSpan').innerText = books.filter(b => b.status === 'borrowed').length;
     }
-    const existing = db.prepare(`SELECT * FROM users WHERE username = ?`).get(username);
-    if (existing) {
-        return res.json({ success: false, message: '用户名已存在' });
+    
+    async function renderStudentMode() {
+        let books = await loadBooks();
+        const searchTerm = document.getElementById('studentSearchInput')?.value.trim().toLowerCase() || '';
+        const statusFilter = document.getElementById('studentStatusFilter')?.value || 'all';
+        let filtered = books.filter(b => 
+            (b.title.toLowerCase().includes(searchTerm) || b.author.toLowerCase().includes(searchTerm) || (b.isbn && b.isbn.toLowerCase().includes(searchTerm))) &&
+            (statusFilter === 'all' || b.status === statusFilter)
+        );
+        const tbody = document.getElementById('studentBookTableBody');
+        if(filtered.length === 0) tbody.innerHTML = '<tr><td colspan="6">📭 暂无匹配图书</td></tr>';
+        else {
+            tbody.innerHTML = filtered.map(book => {
+                const isAvailable = book.status === 'available';
+                const statusClass = isAvailable ? 'status-available' : 'status-borrowed';
+                const statusText = isAvailable ? '可借阅' : '借出中';
+                let actionHtml = '';
+                if(isAvailable) actionHtml = `<button class="btn-sm student-borrow" data-id="${book.id}">📖 借阅</button>`;
+                else if(book.borrower === currentUser.username) actionHtml = `<button class="btn-sm student-return" data-id="${book.id}">🔄 归还</button>`;
+                else actionHtml = `<span style="font-size:0.7rem;">🔒 他人借出</span>`;
+                return `<tr><td><strong>${escapeHtml(book.title)}</strong></td><td>${escapeHtml(book.author)}</td><td>${book.isbn || '—'}</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td>${book.borrower ? escapeHtml(book.borrower) : '——'}</td><td>${actionHtml}</td></tr>`;
+            }).join('');
+        }
+        const res = await fetch(API_URL + `/records/${currentUser.username}`);
+        const records = await res.json();
+        const myActive = records.filter(r => !r.return_date);
+        const myHistory = records.filter(r => r.return_date);
+        const recordsDiv = document.getElementById('studentBorrowRecords');
+        if(myActive.length === 0 && myHistory.length === 0) recordsDiv.innerHTML = '<div style="padding:12px;">📭 暂无借阅记录</div>';
+        else {
+            let html = `<div style="padding:6px 12px; font-weight:bold;">📘 当前借阅 (${myActive.length})</div>`;
+            myActive.forEach(r => html += `<div class="record-item"><span>📖 ${escapeHtml(r.book_title)}</span><span>借于 ${r.borrow_date}</span><span>🔴 未归还</span></div>`);
+            html += `<div style="padding:6px 12px; font-weight:bold; border-top:1px solid #eef2f6;">📜 历史借阅 (${myHistory.length})</div>`;
+            myHistory.forEach(r => html += `<div class="record-item"><span>📚 ${escapeHtml(r.book_title)}</span><span>归还于 ${r.return_date}</span></div>`);
+            recordsDiv.innerHTML = html;
+        }
+        attachStudentEvents();
     }
-    const id = 'user_' + Date.now() + '_' + Math.random().toString(36);
-    const createdAt = new Date().toISOString();
-    const stmt = db.prepare(`INSERT INTO users (id, username, password, nickname, role, created_at) VALUES (?, ?, ?, ?, 'student', ?)`);
-    stmt.run(id, username, password, nickname || '', createdAt);
-    res.json({ success: true, message: '注册成功，请登录' });
-});
-
-// 10. 获取所有用户（管理员）
-app.get('/api/users', (req, res) => {
-    const rows = db.prepare(`SELECT id, username, nickname, role, created_at FROM users`).all();
-    res.json(rows);
-});
-
-// 11. 重置用户密码（管理员）
-app.put('/api/users/:username/reset', (req, res) => {
-    const { username } = req.params;
-    const { newPassword } = req.body;
-    db.prepare(`UPDATE users SET password = ? WHERE username = ?`).run(newPassword, username);
-    res.json({ success: true });
-});
-
-// 12. 删除用户（管理员）
-app.delete('/api/users/:username', (req, res) => {
-    const { username } = req.params;
-    if (username === 'admin') {
-        return res.status(403).json({ error: '不能删除管理员账户' });
+    
+    async function studentBorrow(bookId) {
+        const res = await fetch(API_URL + `/books/${bookId}/borrow`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ borrowerName: currentUser.username, borrowDate: new Date().toISOString().slice(0,10) })
+        });
+        if(res.ok) { await renderStudentMode(); await updateStats(); alert('借阅成功'); }
+        else alert('借阅失败');
     }
-    db.prepare(`DELETE FROM users WHERE username = ?`).run(username);
-    res.json({ success: true });
-});
-
-app.listen(port, () => {
-    console.log(`✅ 小懒图书馆后端启动成功！端口: ${port}`);
-});
+    async function studentReturn(bookId) {
+        const res = await fetch(API_URL + `/books/${bookId}/return`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ returnDate: new Date().toISOString().slice(0,10) })
+        });
+        if(res.ok) { await renderStudentMode(); await updateStats(); alert('归还成功'); }
+        else alert('归还失败');
+    }
+    function attachStudentEvents() {
+        document.querySelectorAll('.student-borrow').forEach(btn => btn.onclick = () => studentBorrow(btn.getAttribute('data-id')));
+        document.querySelectorAll('.student-return').forEach(btn => btn.onclick = () => studentReturn(btn.getAttribute('data-id')));
+    }
+    
+    async function renderAdminMode() {
+        let books = await loadBooks();
+        const search = document.getElementById('adminSearchInput')?.value.trim().toLowerCase() || '';
+        let filtered = books.filter(b => b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search));
+        const tbody = document.getElementById('adminBookTableBody');
+        if(filtered.length === 0) tbody.innerHTML = '<tr><td colspan="5">暂无图书</td></tr>';
+        else {
+            tbody.innerHTML = filtered.map(b => `<tr><td><strong>${escapeHtml(b.title)}</strong></td><td>${escapeHtml(b.author)}</td><td>${b.isbn || '—'}</td><td><span class="status-badge ${b.status === 'available' ? 'status-available' : 'status-borrowed'}">${b.status === 'available' ? '可借阅' : '借出中'}</span></td><td>${b.borrower ? escapeHtml(b.borrower) : '—'}</td></tr>`).join('');
+        }
+        const recordsRes = await fetch(API_URL + '/records');
+        const records = await recordsRes.json();
+        const container = document.getElementById('allBorrowRecords');
+        if(records.length === 0) container.innerHTML = '<div style="padding:12px;">暂无借阅记录</div>';
+        else {
+            container.innerHTML = records.map(r => `<div class="record-item"><span><strong>${escapeHtml(r.book_title)}</strong> 借阅者: ${escapeHtml(r.borrower_name)}</span><span>${r.return_date ? `✅ 已归还 (${r.return_date})` : `🔴 借出中 (${r.borrow_date})`}</span></div>`).join('');
+        }
+    }
+    
+    async function adminAddBook() {
+        const title = document.getElementById('adminBookTitle').value.trim();
+        const author = document.getElementById('adminBookAuthor').value.trim();
+        const isbn = document.getElementById('adminBookIsbn').value.trim();
+        if(!title || !author) { alert("请填写书名和作者"); return; }
+        const id = Date.now() + '-' + Math.random().toString(36);
+        const res = await fetch(API_URL + '/books', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, title, author, isbn })
+        });
+        if(res.ok) {
+            document.getElementById('adminBookTitle').value = '';
+            document.getElementById('adminBookAuthor').value = '';
+            document.getElementById('adminBookIsbn').value = '';
+            await renderAdminMode();
+            await updateStats();
+            alert('添加成功');
+        }
+    }
+    async function adminDeleteBook() {
+        const keyword = document.getElementById('adminDeleteInput').value.trim();
+        if(!keyword) { alert("输入书名或ISBN"); return; }
+        const books = await loadBooks();
+        const target = books.find(b => b.title === keyword || b.isbn === keyword);
+        if(!target) { alert("未找到匹配图书"); return; }
+        if(confirm(`永久删除《${target.title}》？`)) {
+            await fetch(API_URL + `/books/${target.id}`, { method: 'DELETE' });
+            document.getElementById('adminDeleteInput').value = '';
+            await renderAdminMode();
+            await updateStats();
+            alert('删除成功');
+        }
+    }
+    
+    function setUIMode(mode) {
+        document.getElementById('studentPanel').style.display = mode === 'student' ? 'block' : 'none';
+        document.getElementById('adminPanel').style.display = mode === 'admin' ? 'block' : 'none';
+        if(mode === 'student') renderStudentMode();
+        else renderAdminMode();
+    }
+    
+    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    
+    document.getElementById('doLoginBtn').onclick = async () => {
+        const role = document.querySelector('.role-tab.active').getAttribute('data-role');
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+        const result = await login(username, password, role);
+        if(result.success) {
+            currentUser = { username, role: result.role, displayName: result.displayName };
+            document.getElementById('welcomeUserMsg').innerText = `欢迎回来，${result.displayName} (${result.role === 'admin' ? '管理员' : '学生'})`;
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('mainSystem').style.display = 'block';
+            await updateStats();
+            if(currentUser.role === 'admin') {
+                document.getElementById('adminModeBtn').style.display = 'inline-flex';
+                setUIMode('admin');
+            } else {
+                document.getElementById('adminModeBtn').style.display = 'none';
+                setUIMode('student');
+            }
+            // 绑定事件
+            document.getElementById('studentModeBtn').onclick = () => setUIMode('student');
+            document.getElementById('adminModeBtn').onclick = () => { if(currentUser.role === 'admin') setUIMode('admin'); else alert("权限不足"); };
+            document.getElementById('logoutSystemBtn').onclick = () => { currentUser = null; document.getElementById('mainSystem').style.display = 'none'; document.getElementById('loginModal').style.display = 'flex'; };
+            document.getElementById('studentSearchInput').oninput = () => renderStudentMode();
+            document.getElementById('studentStatusFilter').onchange = () => renderStudentMode();
+            document.getElementById('studentResetBtn').onclick = () => { document.getElementById('studentSearchInput').value = ''; document.getElementById('studentStatusFilter').value = 'all'; renderStudentMode(); };
+            document.getElementById('adminAddBookBtn').onclick = adminAddBook;
+            document.getElementById('adminDeleteBookBtn').onclick = adminDeleteBook;
+            document.getElementById('adminSearchInput').oninput = () => renderAdminMode();
+            document.getElementById('adminRefreshBtn').onclick = () => renderAdminMode();
+        } else {
+            const errDiv = document.getElementById('loginErrorMsg');
+            errDiv.innerText = result.message || '登录失败';
+            errDiv.style.display = 'block';
+            setTimeout(() => errDiv.style.display = 'none', 2000);
+        }
+    };
+    document.querySelectorAll('.role-tab').forEach(tab => {
+        tab.onclick = function() {
+            document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+        };
+    });
+    document.getElementById('loginPassword').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('doLoginBtn').click(); });
+</script>
+</body>
+</html>
