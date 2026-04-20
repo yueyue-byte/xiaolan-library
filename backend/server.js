@@ -40,7 +40,6 @@ const bookCount = db.prepare(`SELECT COUNT(*) as count FROM books`).get();
 if (bookCount.count === 0) {
     const insert = db.prepare(`INSERT INTO books (id, title, author, isbn, status, borrower) VALUES (?, ?, ?, ?, ?, ?)`);
     
-    // 生成150本书的数组（从之前提供的150本中取前150条，确保数据完整）
     const sampleBooks = [
         ['book1', '深入理解计算机系统', 'Randal E. Bryant', '9787111544937', 'available', ''],
         ['book2', '你当像鸟飞往你的山', '塔拉·韦斯特弗', '9787544291165', 'available', ''],
@@ -199,53 +198,81 @@ if (bookCount.count === 0) {
 }
 
 // ---------- API 路由 ----------
+
+// 1. 获取所有图书
 app.get('/api/books', (req, res) => {
     const rows = db.prepare(`SELECT * FROM books`).all();
     res.json(rows);
 });
 
+// 2. 添加图书
 app.post('/api/books', (req, res) => {
     const { id, title, author, isbn } = req.body;
     db.prepare(`INSERT INTO books (id, title, author, isbn, status, borrower) VALUES (?, ?, ?, ?, 'available', '')`).run(id, title, author, isbn);
     res.json({ success: true });
 });
 
+// 3. 删除图书
 app.delete('/api/books/:id', (req, res) => {
     db.prepare(`DELETE FROM books WHERE id = ?`).run(req.params.id);
     res.json({ success: true });
 });
 
+// 4. 借阅图书（限制每人最多同时借4本）
 app.put('/api/books/:id/borrow', (req, res) => {
     const { id } = req.params;
     const { borrowerName, borrowDate } = req.body;
+
+    // 检查图书是否存在且可借
     const book = db.prepare(`SELECT * FROM books WHERE id = ?`).get(id);
-    if (!book || book.status !== 'available') return res.status(400).json({ error: '图书不可借' });
+    if (!book || book.status !== 'available') {
+        return res.status(400).json({ error: '图书不可借' });
+    }
+
+    // 检查该用户当前借阅未还的数量
+    const borrowedCount = db.prepare(
+        `SELECT COUNT(*) as count FROM borrow_records WHERE borrower_name = ? AND return_date IS NULL`
+    ).get(borrowerName).count;
+
+    if (borrowedCount >= 4) {
+        return res.status(400).json({ error: '每人最多同时借阅4本书，请先归还部分图书' });
+    }
+
+    // 执行借阅
     db.prepare(`UPDATE books SET status = 'borrowed', borrower = ? WHERE id = ?`).run(borrowerName, id);
     const recordId = Date.now() + '-' + Math.random().toString(36);
-    db.prepare(`INSERT INTO borrow_records (id, book_id, book_title, borrower_name, borrow_date, return_date) VALUES (?, ?, ?, ?, ?, NULL)`).run(recordId, id, book.title, borrowerName, borrowDate);
+    db.prepare(`INSERT INTO borrow_records (id, book_id, book_title, borrower_name, borrow_date, return_date) VALUES (?, ?, ?, ?, ?, NULL)`)
+        .run(recordId, id, book.title, borrowerName, borrowDate);
+
     res.json({ success: true });
 });
 
+// 5. 归还图书
 app.put('/api/books/:id/return', (req, res) => {
     const { id } = req.params;
     const { returnDate } = req.body;
     const book = db.prepare(`SELECT * FROM books WHERE id = ?`).get(id);
-    if (!book || book.status !== 'borrowed') return res.status(400).json({ error: '图书未借出' });
+    if (!book || book.status !== 'borrowed') {
+        return res.status(400).json({ error: '图书未借出' });
+    }
     db.prepare(`UPDATE books SET status = 'available', borrower = '' WHERE id = ?`).run(id);
     db.prepare(`UPDATE borrow_records SET return_date = ? WHERE book_id = ? AND return_date IS NULL`).run(returnDate, id);
     res.json({ success: true });
 });
 
+// 6. 获取所有借阅记录
 app.get('/api/records', (req, res) => {
     const rows = db.prepare(`SELECT * FROM borrow_records ORDER BY borrow_date DESC`).all();
     res.json(rows);
 });
 
+// 7. 获取某个用户的借阅记录
 app.get('/api/records/:studentName', (req, res) => {
     const rows = db.prepare(`SELECT * FROM borrow_records WHERE borrower_name = ? ORDER BY borrow_date DESC`).all(req.params.studentName);
     res.json(rows);
 });
 
+// 8. 登录验证（固定账号）
 app.post('/api/login', (req, res) => {
     const { username, password, role } = req.body;
     if (role === 'student' && username === 'student' && password === '123456') {
