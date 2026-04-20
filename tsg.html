@@ -2,359 +2,63 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>小懒图书馆管理系统 | 安全登录 · 双模式</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小懒图书馆 | 完整版</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: system-ui, 'Segoe UI', 'Roboto', 'Noto Sans', sans-serif;
-        }
-
-        body {
-            background: linear-gradient(145deg, #e0eaf5 0%, #cfdfed 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        /* 全局容器 */
-        .app-wrapper {
-            width: 100%;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* 登录面板样式 */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: linear-gradient(145deg, #e0eaf5 0%, #cfdfed 100%); min-height: 100vh; padding: 20px; }
+        .app-wrapper { max-width: 1400px; margin: 0 auto; }
+        
+        /* 登录框样式 */
         .login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(6px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            transition: all 0.3s;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+            display: flex; align-items: center; justify-content: center; z-index: 2000;
         }
-
         .login-card {
-            background: white;
-            border-radius: 48px;
-            width: 90%;
-            max-width: 460px;
-            padding: 32px 28px 40px;
-            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            animation: fadeSlideUp 0.3s ease;
+            background: white; border-radius: 48px; width: 90%; max-width: 460px;
+            padding: 32px 28px; text-align: center;
         }
-
-        @keyframes fadeSlideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .login-card h2 {
-            font-size: 1.9rem;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #1f5e3a, #2c7a4d);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-        }
-
-        .login-card p {
-            color: #5b7a9a;
-            font-size: 0.85rem;
-            margin-bottom: 28px;
-        }
-
-        .input-field {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        .input-field label {
-            display: block;
-            font-weight: 600;
-            font-size: 0.75rem;
-            margin-bottom: 6px;
-            color: #2c3e50;
-            letter-spacing: 0.5px;
-        }
-
-        .input-field input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 1px solid #cbdde9;
-            border-radius: 32px;
-            font-size: 0.95rem;
-            transition: 0.2s;
-            background: #fefefe;
-        }
-
-        .input-field input:focus {
-            border-color: #2c7a4d;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(44,122,77,0.15);
-        }
-
-        .role-tabs {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 28px;
-            background: #f0f4f9;
-            padding: 5px;
-            border-radius: 60px;
-        }
-
-        .role-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px 0;
-            border-radius: 40px;
-            font-weight: 600;
-            cursor: pointer;
-            background: transparent;
-            color: #3b6e56;
-            transition: all 0.2s;
-            border: none;
-            font-size: 1rem;
-        }
-
-        .role-tab.active {
-            background: #1f5e3a;
-            color: white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-
-        .login-btn {
-            width: 100%;
-            background: #1f5e3a;
-            padding: 14px;
-            font-size: 1rem;
-            border-radius: 40px;
-            margin-top: 8px;
-            font-weight: 700;
-        }
-
-        .error-msg {
-            color: #c2412c;
-            font-size: 0.75rem;
-            margin-top: 12px;
-            background: #fff0ee;
-            padding: 8px;
-            border-radius: 40px;
-        }
-
-        /* 主系统界面 (默认隐藏直到登录成功) */
-        .main-system {
-            display: none;
-        }
-
-        /* 原系统样式适配 (复用之前设计) */
-        .mode-header {
-            background: white;
-            border-radius: 28px;
-            padding: 20px 28px;
-            margin-bottom: 28px;
-            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .title-area h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #1f5e3a, #2c7a4d);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-        }
-
-        .mode-switch {
-            display: flex;
-            gap: 12px;
-            background: #f0f4f9;
-            padding: 6px;
-            border-radius: 48px;
-        }
-
-        .mode-btn {
-            border: none;
-            background: transparent;
-            padding: 8px 24px;
-            border-radius: 40px;
-            font-weight: 600;
-            cursor: pointer;
-            color: #2c5a74;
-            transition: 0.2s;
-        }
-
-        .mode-btn.active {
-            background: #1f5e3a;
-            color: white;
-        }
-
-        .stats-row {
-            display: flex;
-            gap: 20px;
-            background: #f8fafc;
-            border-radius: 48px;
-            padding: 8px 24px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            padding: 20px 24px;
-            margin-bottom: 24px;
-        }
-
-        .flex-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            align-items: flex-end;
-        }
-
-        .input-group {
-            flex: 1;
-            min-width: 160px;
-        }
-
-        .input-group label {
-            display: block;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: #5b7a9a;
-            margin-bottom: 5px;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #cfdfed;
-            border-radius: 16px;
-            font-size: 0.9rem;
-        }
-
-        button {
-            background: #1f5e3a;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-outline {
-            background: white;
-            color: #1f5e3a;
-            border: 1px solid #cbdde9;
-        }
-
-        .btn-danger {
-            background: #c2412c;
-        }
-
-        .btn-sm {
-            padding: 5px 12px;
-            font-size: 0.75rem;
-        }
-
-        .table-wrapper {
-            overflow-x: auto;
-            border-radius: 24px;
-            background: white;
-        }
-
-        .book-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-
-        .book-table th, .book-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eef2f6;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 50px;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        .status-available {
-            background: #dff3e4;
-            color: #1f6e43;
-        }
-
-        .status-borrowed {
-            background: #ffe6e2;
-            color: #bc4e2c;
-        }
-
-        .record-log {
-            max-height: 260px;
-            overflow-y: auto;
-            background: #fafcfd;
-            border-radius: 20px;
-        }
-
-        .record-item {
-            padding: 10px 16px;
-            border-bottom: 1px solid #ecf3f8;
-            font-size: 0.8rem;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-        }
-
-        .logout-btn {
-            background: #e2e8f0;
-            color: #2c3e50;
-            margin-left: 10px;
-        }
-
-        .logout-btn:hover {
-            background: #cbd5e1;
-        }
-
-        footer {
-            text-align: center;
-            font-size: 0.7rem;
-            margin-top: 20px;
-            color: #4f6f8f;
-        }
+        .login-card h2 { background: linear-gradient(135deg, #1f5e3a, #2c7a4d); background-clip: text; -webkit-background-clip: text; color: transparent; margin-bottom: 8px; }
+        .role-tabs { display: flex; gap: 12px; margin: 20px 0; background: #f0f4f9; padding: 5px; border-radius: 60px; }
+        .role-tab { flex: 1; padding: 10px; border-radius: 40px; font-weight: 600; cursor: pointer; background: transparent; border: none; }
+        .role-tab.active { background: #1f5e3a; color: white; }
+        .input-field { margin-bottom: 20px; text-align: left; }
+        .input-field input { width: 100%; padding: 14px 16px; border: 1px solid #cbdde9; border-radius: 32px; }
+        .login-btn { width: 100%; background: #1f5e3a; padding: 14px; border-radius: 40px; color: white; font-weight: bold; border: none; cursor: pointer; }
+        .error-msg { color: #c2412c; font-size: 0.75rem; margin-top: 12px; display: none; }
+        
+        /* 主系统样式 */
+        .main-system { display: none; }
+        .mode-header { background: white; border-radius: 28px; padding: 20px 28px; margin-bottom: 28px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+        .mode-switch { display: flex; gap: 12px; background: #f0f4f9; padding: 6px; border-radius: 48px; }
+        .mode-btn { padding: 8px 24px; border-radius: 40px; background: transparent; border: none; cursor: pointer; }
+        .mode-btn.active { background: #1f5e3a; color: white; }
+        .stats-row { display: flex; gap: 20px; background: #f8fafc; border-radius: 48px; padding: 8px 24px; }
+        .card { background: white; border-radius: 24px; padding: 20px 24px; margin-bottom: 24px; }
+        .flex-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+        .input-group { flex: 1; min-width: 160px; }
+        .input-group label { font-size: 0.7rem; font-weight: 600; color: #5b7a9a; }
+        input, select { width: 100%; padding: 10px 12px; border: 1px solid #cfdfed; border-radius: 16px; }
+        button { background: #1f5e3a; border: none; padding: 10px 20px; border-radius: 40px; color: white; cursor: pointer; }
+        .btn-outline { background: white; color: #1f5e3a; border: 1px solid #cbdde9; }
+        .btn-danger { background: #c2412c; }
+        .btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+        .table-wrapper { overflow-x: auto; border-radius: 24px; background: white; }
+        .book-table { width: 100%; border-collapse: collapse; }
+        .book-table th, .book-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eef2f6; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 50px; font-size: 0.7rem; }
+        .status-available { background: #dff3e4; color: #1f6e43; }
+        .status-borrowed { background: #ffe6e2; color: #bc4e2c; }
+        .record-log { max-height: 260px; overflow-y: auto; background: #fafcfd; border-radius: 20px; }
+        .record-item { padding: 10px 16px; border-bottom: 1px solid #ecf3f8; display: flex; justify-content: space-between; }
+        .logout-btn { background: #e2e8f0; color: #2c3e50; margin-left: 10px; }
+        footer { text-align: center; font-size: 0.7rem; margin-top: 20px; color: #4f6f8f; }
     </style>
 </head>
 <body>
 <div class="app-wrapper">
-    <!-- 登录弹窗 -->
+    <!-- 登录框 -->
     <div id="loginModal" class="login-overlay">
         <div class="login-card">
             <h2>📚 小懒图书馆</h2>
@@ -363,30 +67,21 @@
                 <button class="role-tab active" data-role="student">👩‍🎓 学生入口</button>
                 <button class="role-tab" data-role="admin">👨‍💼 管理员入口</button>
             </div>
-            <div class="input-field">
-                <label>📧 账号</label>
-                <input type="text" id="loginUsername" placeholder="请输入账号" autocomplete="off">
-            </div>
-            <div class="input-field">
-                <label>🔒 密码</label>
-                <input type="password" id="loginPassword" placeholder="请输入密码">
-            </div>
-            <button id="doLoginBtn" class="login-btn">登 录 系 统</button>
-            <div id="loginErrorMsg" class="error-msg" style="display: none;">❌ 账号或密码错误</div>
-            <div style="margin-top: 20px; font-size: 0.7rem; color: #7a98b5; background: #f4f9fe; padding: 8px; border-radius: 28px;">
+            <div class="input-field"><label>账号</label><input type="text" id="loginUsername" placeholder="请输入账号"></div>
+            <div class="input-field"><label>密码</label><input type="password" id="loginPassword" placeholder="请输入密码"></div>
+            <button id="doLoginBtn" class="login-btn">登录系统</button>
+            <div id="loginErrorMsg" class="error-msg">❌ 账号或密码错误</div>
+            <div style="margin-top: 20px; font-size: 0.7rem; background: #f4f9fe; padding: 8px; border-radius: 28px;">
                 ⚡ 学生: student / 123456 &nbsp;&nbsp;|&nbsp;&nbsp; 管理员: admin / admin123
             </div>
         </div>
     </div>
 
-    <!-- 主系统界面 (登录后显示) -->
+    <!-- 主系统 -->
     <div id="mainSystem" class="main-system">
         <div class="mode-header">
-            <div class="title-area">
-                <h1>📚 小懒图书馆 | 双模管理系统</h1>
-                <p id="welcomeUserMsg" style="font-size:0.75rem; color:#4a627a;"></p>
-            </div>
-            <div style="display: flex; gap: 12px; align-items: center;">
+            <div class="title-area"><h1>📚 小懒图书馆 | 双模管理系统</h1><p id="welcomeUserMsg"></p></div>
+            <div style="display: flex; gap: 12px;">
                 <div class="mode-switch">
                     <button id="studentModeBtn" class="mode-btn active">👩‍🎓 学生模式</button>
                     <button id="adminModeBtn" class="mode-btn">👨‍💼 管理员模式</button>
@@ -394,244 +89,261 @@
                 <button id="logoutSystemBtn" class="logout-btn">🚪 退出登录</button>
             </div>
             <div class="stats-row">
-                <div class="stat"><span>📚 总藏书:</span> <span id="totalBooksSpan">0</span></div>
-                <div class="stat"><span>✅ 可借:</span> <span id="availBooksSpan">0</span></div>
-                <div class="stat"><span>📖 借出:</span> <span id="borrowedBooksSpan">0</span></div>
+                <div class="stat">📚 总藏书: <span id="totalBooksSpan">0</span></div>
+                <div class="stat">✅ 可借: <span id="availBooksSpan">0</span></div>
+                <div class="stat">📖 借出: <span id="borrowedBooksSpan">0</span></div>
             </div>
         </div>
 
         <!-- 学生面板 -->
         <div id="studentPanel">
             <div class="card">
-                <h3>🔍 检索图书 (书名/作者/ISBN)</h3>
+                <h3>🔍 检索图书</h3>
                 <div class="flex-row">
                     <div class="input-group" style="flex:3;"><input type="text" id="studentSearchInput" placeholder="输入关键字检索..."></div>
                     <div class="input-group" style="flex:1;"><select id="studentStatusFilter"><option value="all">全部状态</option><option value="available">可借阅</option><option value="borrowed">借出中</option></select></div>
                     <button id="studentResetBtn" class="btn-outline">重置</button>
                 </div>
             </div>
-            <div class="table-wrapper">
-                <table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th><th>学生操作</th></thead>
-                <tbody id="studentBookTableBody"><tr class="empty-row"><td colspan="6">📖 加载中...</tr></tbody>
-                </table>
-            </div>
-            <div class="card" style="background: #fefce8;"><h4>📌 我的借阅记录</h4><div id="studentBorrowRecords" class="record-log" style="max-height:150px;"><div style="padding:12px;">暂无借阅历史</div></div></div>
+            <div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th><th>操作</th></tr></thead><tbody id="studentBookTableBody"></tbody></table></div>
+            <div class="card"><h4>📌 我的借阅记录</h4><div id="studentBorrowRecords" class="record-log"></div></div>
         </div>
 
         <!-- 管理员面板 -->
         <div id="adminPanel" style="display: none;">
-            <div class="card"><h3>📌 图书管理 (增/删)</h3>
-                <div class="flex-row"><div class="input-group"><label>书名 *</label><input type="text" id="adminBookTitle"></div><div class="input-group"><label>作者 *</label><input type="text" id="adminBookAuthor"></div><div class="input-group"><label>ISBN</label><input type="text" id="adminBookIsbn"></div><button id="adminAddBookBtn">➕ 添加图书</button></div>
-                <div class="flex-row" style="margin-top:16px;"><div class="input-group"><label>按书名/ISBN删除</label><input type="text" id="adminDeleteInput" placeholder="输入书名或ISBN"></div><button id="adminDeleteBookBtn" class="btn-danger">🗑️ 删除图书</button></div>
+            <div class="card"><h3>📌 图书管理</h3>
+                <div class="flex-row"><div class="input-group"><label>书名</label><input type="text" id="adminBookTitle"></div><div class="input-group"><label>作者</label><input type="text" id="adminBookAuthor"></div><div class="input-group"><label>ISBN</label><input type="text" id="adminBookIsbn"></div><button id="adminAddBookBtn">➕ 添加图书</button></div>
+                <div class="flex-row" style="margin-top:16px;"><div class="input-group"><label>按书名/ISBN删除</label><input type="text" id="adminDeleteInput"></div><button id="adminDeleteBookBtn" class="btn-danger">🗑️ 删除图书</button></div>
             </div>
-            <div class="card"><h3>📜 全馆借阅记录</h3><div id="allBorrowRecords" class="record-log" style="max-height:280px;"></div></div>
-            <div class="card"><h3>📚 图书库存总览</h3><div class="flex-row"><div class="input-group" style="flex:3;"><input type="text" id="adminSearchInput" placeholder="搜索图书..."></div><button id="adminRefreshBtn" class="btn-outline">刷新列表</button></div><div class="table-wrapper" style="margin-top:16px;"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>当前借阅人</th></thead><tbody id="adminBookTableBody"></tbody></table></div></div>
+            <div class="card"><h3>📜 全馆借阅记录</h3><div id="allBorrowRecords" class="record-log"></div></div>
+            <div class="card"><h3>📚 图书库存总览</h3><div class="flex-row"><div class="input-group"><input type="text" id="adminSearchInput" placeholder="搜索图书..."></div><button id="adminRefreshBtn" class="btn-outline">刷新</button></div><div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th></tr></thead><tbody id="adminBookTableBody"></tbody></table></div></div>
         </div>
-        <footer>⚡ 学生借阅上限3本，管理员可增删图书并查看完整记录。</footer>
+        <footer>⚡ 数据已持久化存储，刷新页面不会丢失！</footer>
     </div>
 </div>
 
 <script>
-    // ---------- 登录凭证 ----------
-    const USER_CREDENTIALS = {
-        student: { username: "student", password: "123456", displayName: "小懒同学" },
-        admin: { username: "admin", password: "admin123", displayName: "小懒管理员" }
-    };
-
-    let currentLoggedRole = null;      // 'student' or 'admin'
-    let currentDisplayName = "";
+    // API 地址（后端运行在 localhost:3000）
+    const API_URL = 'https://xiaolan-library-production-0e34.up.railway.app/api';
     
-    // ---------- 图书馆核心数据 ----------
-    let books = [];
-    let borrowRecords = [];
-    const CURRENT_STUDENT_NAME = "小懒同学";   // 学生模式下固定借阅人姓名展示
+    let currentLoggedRole = null;
+    let currentDisplayName = "";
+    const CURRENT_STUDENT_NAME = "小懒同学";
     
     // 辅助函数
-    function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 8); }
     function getToday() { return new Date().toISOString().slice(0,10); }
-    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 8); }
     
-    // 初始化示例数据
-    function initSampleData() {
-        books = [
-            { id: generateId(), title: "深入理解计算机系统", author: "Randal E. Bryant", isbn: "9787111544937", status: "available", borrower: "" },
-            { id: generateId(), title: "你当像鸟飞往你的山", author: "塔拉·韦斯特弗", isbn: "9787544291165", status: "borrowed", borrower: "陈小雅" },
-            { id: generateId(), title: "百年孤独", author: "加西亚·马尔克斯", isbn: "9787544253995", status: "available", borrower: "" },
-            { id: generateId(), title: "JavaScript高级程序设计", author: "Nicholas C. Zakas", isbn: "9787115275790", status: "borrowed", borrower: "小懒同学" },
-            { id: generateId(), title: "三体:黑暗森林", author: "刘慈欣", isbn: "9787229043353", status: "available", borrower: "" }
-        ];
-        borrowRecords = [
-            { id: generateId(), bookId: books[3]?.id, bookTitle: "JavaScript高级程序设计", borrowerName: "小懒同学", borrowDate: "2025-03-10", returnDate: null, status: "借出中" },
-            { id: generateId(), bookId: books[1]?.id, bookTitle: "你当像鸟飞往你的山", borrowerName: "陈小雅", borrowDate: "2025-03-01", returnDate: null, status: "借出中" },
-            { id: generateId(), bookId: books[0]?.id, bookTitle: "深入理解计算机系统", borrowerName: "王老师", borrowDate: "2025-02-20", returnDate: "2025-03-05", status: "已归还" }
-        ];
-        // 同步书籍借阅人
-        books.forEach(book => {
-            if(book.status === 'borrowed' && book.borrower && !borrowRecords.find(r=>r.bookId===book.id && !r.returnDate)) {
-                borrowRecords.push({ id: generateId(), bookId: book.id, bookTitle: book.title, borrowerName: book.borrower, borrowDate: getToday(), returnDate: null, status: "借出中" });
-            }
-        });
+    // 从服务器加载数据
+    async function loadBooks() {
+        const response = await fetch(`${API_URL}/books`);
+        return await response.json();
     }
     
-    // 更新顶部统计
-    function updateStats() {
-        document.getElementById('totalBooksSpan').innerText = books.length;
-        document.getElementById('availBooksSpan').innerText = books.filter(b=>b.status==='available').length;
-        document.getElementById('borrowedBooksSpan').innerText = books.filter(b=>b.status==='borrowed').length;
+    async function loadRecords() {
+        const response = await fetch(`${API_URL}/records`);
+        return await response.json();
     }
     
-    // ---------- 学生模式渲染 ----------
-    function renderStudentMode() {
-        const searchTerm = (document.getElementById('studentSearchInput')?.value || '').trim().toLowerCase();
+    async function loadStudentRecords(studentName) {
+        const response = await fetch(`${API_URL}/records/${encodeURIComponent(studentName)}`);
+        return await response.json();
+    }
+    
+    // 更新统计
+    async function updateStats() {
+        const books = await loadBooks();
+        const total = books.length;
+        const avail = books.filter(b => b.status === 'available').length;
+        const borrowed = books.filter(b => b.status === 'borrowed').length;
+        document.getElementById('totalBooksSpan').innerText = total;
+        document.getElementById('availBooksSpan').innerText = avail;
+        document.getElementById('borrowedBooksSpan').innerText = borrowed;
+    }
+    
+    // 渲染学生模式
+    async function renderStudentMode() {
+        let books = await loadBooks();
+        const searchTerm = document.getElementById('studentSearchInput')?.value.trim().toLowerCase() || '';
         const statusFilter = document.getElementById('studentStatusFilter')?.value || 'all';
+        
         let filtered = books.filter(b => 
             (b.title.toLowerCase().includes(searchTerm) || b.author.toLowerCase().includes(searchTerm) || (b.isbn && b.isbn.toLowerCase().includes(searchTerm))) &&
-            (statusFilter === 'all' || (statusFilter === 'available' && b.status === 'available') || (statusFilter === 'borrowed' && b.status === 'borrowed'))
+            (statusFilter === 'all' || b.status === statusFilter)
         );
+        
         const tbody = document.getElementById('studentBookTableBody');
-        if(filtered.length === 0) tbody.innerHTML = '<tr class="empty-row"><td colspan="6">📭 暂无匹配图书</tr>';
-        else {
+        if(filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6">📭 暂无匹配图书</td></tr>';
+        } else {
             tbody.innerHTML = filtered.map(book => {
                 const isAvailable = book.status === 'available';
                 const statusClass = isAvailable ? 'status-available' : 'status-borrowed';
                 const statusText = isAvailable ? '可借阅' : '借出中';
                 let actionHtml = '';
-                if(isAvailable) actionHtml = `<button class="btn-sm student-borrow" data-id="${book.id}">📖 借阅</button>`;
-                else if(book.borrower === CURRENT_STUDENT_NAME) actionHtml = `<button class="btn-sm student-return" data-id="${book.id}">🔄 归还</button>`;
-                else actionHtml = `<span style="font-size:0.7rem;">🔒 他人借出</span>`;
+                if(isAvailable) {
+                    actionHtml = `<button class="btn-sm student-borrow" data-id="${book.id}">📖 借阅</button>`;
+                } else if(book.borrower === CURRENT_STUDENT_NAME) {
+                    actionHtml = `<button class="btn-sm student-return" data-id="${book.id}">🔄 归还</button>`;
+                } else {
+                    actionHtml = `<span style="font-size:0.7rem;">🔒 他人借出</span>`;
+                }
                 return `<tr><td><strong>${escapeHtml(book.title)}</strong></td><td>${escapeHtml(book.author)}</td><td>${book.isbn || '—'}</td><td><span class="status-badge ${statusClass}">${statusText}</span></td><td>${book.borrower ? escapeHtml(book.borrower) : '——'}</td><td>${actionHtml}</td></tr>`;
             }).join('');
         }
-        // 个人借阅记录
-        const myActive = borrowRecords.filter(r => r.borrowerName === CURRENT_STUDENT_NAME && r.returnDate === null);
-        const myHistory = borrowRecords.filter(r => r.borrowerName === CURRENT_STUDENT_NAME && r.returnDate !== null);
+        
+        // 加载学生借阅记录
+        const records = await loadStudentRecords(CURRENT_STUDENT_NAME);
+        const myActive = records.filter(r => !r.return_date);
+        const myHistory = records.filter(r => r.return_date);
         const recordsDiv = document.getElementById('studentBorrowRecords');
-        if(myActive.length === 0 && myHistory.length === 0) recordsDiv.innerHTML = '<div style="padding:12px;">📭 暂无借阅记录</div>';
-        else {
+        if(myActive.length === 0 && myHistory.length === 0) {
+            recordsDiv.innerHTML = '<div style="padding:12px;">📭 暂无借阅记录</div>';
+        } else {
             let html = `<div style="padding:6px 12px; font-weight:bold;">📘 当前借阅 (${myActive.length})</div>`;
-            if(myActive.length) myActive.forEach(r => html += `<div class="record-item"><span>📖 ${escapeHtml(r.bookTitle)}</span><span>借于 ${r.borrowDate}</span><span>🔴 未归还</span></div>`);
-            else html += `<div class="record-item">暂无未还图书</div>`;
+            myActive.forEach(r => html += `<div class="record-item"><span>📖 ${escapeHtml(r.book_title)}</span><span>借于 ${r.borrow_date}</span><span>🔴 未归还</span></div>`);
             html += `<div style="padding:6px 12px; font-weight:bold; border-top:1px solid #eef2f6;">📜 历史借阅 (${myHistory.length})</div>`;
-            if(myHistory.length) myHistory.forEach(r => html += `<div class="record-item"><span>📚 ${escapeHtml(r.bookTitle)}</span><span>归还于 ${r.returnDate}</span></div>`);
-            else html += `<div class="record-item">暂无历史</div>`;
+            myHistory.forEach(r => html += `<div class="record-item"><span>📚 ${escapeHtml(r.book_title)}</span><span>归还于 ${r.return_date}</span></div>`);
             recordsDiv.innerHTML = html;
         }
         attachStudentEvents();
     }
     
-    // 管理员模式渲染
-    function renderAdminMode() {
-        const adminSearch = (document.getElementById('adminSearchInput')?.value || '').trim().toLowerCase();
-        let filtered = books.filter(b => b.title.toLowerCase().includes(adminSearch) || b.author.toLowerCase().includes(adminSearch) || (b.isbn && b.isbn.includes(adminSearch)));
+    // 渲染管理员模式
+    async function renderAdminMode() {
+        let books = await loadBooks();
+        const adminSearch = document.getElementById('adminSearchInput')?.value.trim().toLowerCase() || '';
+        let filtered = books.filter(b => b.title.toLowerCase().includes(adminSearch) || b.author.toLowerCase().includes(adminSearch));
+        
         const adminTbody = document.getElementById('adminBookTableBody');
-        if(filtered.length===0) adminTbody.innerHTML = '<tr><td colspan="5">暂无图书</td></tr>';
-        else adminTbody.innerHTML = filtered.map(b => `<tr><td><strong>${escapeHtml(b.title)}</strong></td><td>${escapeHtml(b.author)}</td><td>${b.isbn||'—'}</td><td><span class="status-badge ${b.status==='available'?'status-available':'status-borrowed'}">${b.status==='available'?'可借阅':'借出中'}</span></td><td>${b.borrower?escapeHtml(b.borrower):'—'}</td></tr>`).join('');
+        if(filtered.length === 0) {
+            adminTbody.innerHTML = '<tr><td colspan="5">暂无图书</td></tr>';
+        } else {
+            adminTbody.innerHTML = filtered.map(b => `<tr><td><strong>${escapeHtml(b.title)}</strong></td><td>${escapeHtml(b.author)}</td><td>${b.isbn || '—'}</td><td><span class="status-badge ${b.status === 'available' ? 'status-available' : 'status-borrowed'}">${b.status === 'available' ? '可借阅' : '借出中'}</span></td><td>${b.borrower ? escapeHtml(b.borrower) : '—'}</td></tr>`).join('');
+        }
+        
+        const records = await loadRecords();
         const allRecordsDiv = document.getElementById('allBorrowRecords');
-        if(borrowRecords.length===0) allRecordsDiv.innerHTML = '<div style="padding:12px;">暂无借阅记录</div>';
-        else {
-            allRecordsDiv.innerHTML = [...borrowRecords].reverse().map(rec => `<div class="record-item"><span><strong>${escapeHtml(rec.bookTitle)}</strong> 借阅者: ${escapeHtml(rec.borrowerName)}</span><span>${rec.returnDate ? `✅ 已归还 (${rec.returnDate})` : `🔴 借出中 (${rec.borrowDate})`}</span></div>`).join('');
+        if(records.length === 0) {
+            allRecordsDiv.innerHTML = '<div style="padding:12px;">暂无借阅记录</div>';
+        } else {
+            allRecordsDiv.innerHTML = records.map(rec => `<div class="record-item"><span><strong>${escapeHtml(rec.book_title)}</strong> 借阅者: ${escapeHtml(rec.borrower_name)}</span><span>${rec.return_date ? `✅ 已归还 (${rec.return_date})` : `🔴 借出中 (${rec.borrow_date})`}</span></div>`).join('');
         }
     }
     
-    // 学生借阅/归还逻辑
-    function studentBorrow(bookId) {
-        const book = books.find(b=>b.id===bookId);
-        if(!book || book.status!=='available') { alert("该书不可借阅"); return; }
-        const activeCount = borrowRecords.filter(r=>r.borrowerName===CURRENT_STUDENT_NAME && r.returnDate===null).length;
-        if(activeCount>=3) { alert("每人最多借阅3本书，请先归还部分图书"); return; }
-        book.status = 'borrowed';
-        book.borrower = CURRENT_STUDENT_NAME;
-        borrowRecords.push({ id: generateId(), bookId: book.id, bookTitle: book.title, borrowerName: CURRENT_STUDENT_NAME, borrowDate: getToday(), returnDate: null, status: "借出中" });
-        renderStudentMode();
-        updateStats();
-        if(currentLoggedRole === 'admin') renderAdminMode();
-        alert(`《${book.title}》借阅成功`);
+    // 借阅
+    async function studentBorrow(bookId) {
+        const borrowerName = CURRENT_STUDENT_NAME;
+        const response = await fetch(`${API_URL}/books/${bookId}/borrow`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ borrowerName, borrowDate: getToday() })
+        });
+        if(response.ok) {
+            await renderStudentMode();
+            await updateStats();
+            alert('借阅成功！');
+        } else {
+            alert('借阅失败');
+        }
     }
-    function studentReturn(bookId) {
-        const book = books.find(b=>b.id===bookId);
-        if(!book || book.borrower !== CURRENT_STUDENT_NAME) { alert("无法归还，您不是当前借阅人"); return; }
-        const record = borrowRecords.find(r=>r.bookId===bookId && r.returnDate===null && r.borrowerName===CURRENT_STUDENT_NAME);
-        if(record) { record.returnDate = getToday(); record.status = "已归还"; }
-        book.status = 'available';
-        book.borrower = '';
-        renderStudentMode();
-        updateStats();
-        if(currentLoggedRole === 'admin') renderAdminMode();
-        alert(`《${book.title}》归还成功`);
-    }
-    function attachStudentEvents() {
-        document.querySelectorAll('.student-borrow').forEach(btn => { btn.removeEventListener('click', handleBorrow); btn.addEventListener('click', handleBorrow); });
-        document.querySelectorAll('.student-return').forEach(btn => { btn.removeEventListener('click', handleReturn); btn.addEventListener('click', handleReturn); });
-    }
-    function handleBorrow(e) { const id = e.currentTarget.getAttribute('data-id'); if(id) studentBorrow(id); }
-    function handleReturn(e) { const id = e.currentTarget.getAttribute('data-id'); if(id) studentReturn(id); }
     
-    // 管理员增删
-    function adminAddBook() {
+    // 归还
+    async function studentReturn(bookId) {
+        const response = await fetch(`${API_URL}/books/${bookId}/return`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ returnDate: getToday() })
+        });
+        if(response.ok) {
+            await renderStudentMode();
+            await updateStats();
+            alert('归还成功！');
+        } else {
+            alert('归还失败');
+        }
+    }
+    
+    // 管理员添加图书
+    async function adminAddBook() {
         const title = document.getElementById('adminBookTitle').value.trim();
         const author = document.getElementById('adminBookAuthor').value.trim();
         const isbn = document.getElementById('adminBookIsbn').value.trim();
         if(!title || !author) { alert("请填写书名和作者"); return; }
-        if(isbn && books.some(b=>b.isbn===isbn) && !confirm("ISBN已存在，仍要添加吗?")) return;
-        books.push({ id: generateId(), title, author, isbn, status: "available", borrower: "" });
-        document.getElementById('adminBookTitle').value = ''; document.getElementById('adminBookAuthor').value = ''; document.getElementById('adminBookIsbn').value = '';
-        updateStats(); renderAdminMode(); if(currentLoggedRole === 'student') renderStudentMode();
-        alert(`《${title}》添加成功`);
-    }
-    function adminDeleteBook() {
-        const keyword = document.getElementById('adminDeleteInput').value.trim();
-        if(!keyword) { alert("输入书名或ISBN"); return; }
-        const target = books.find(b=>b.title===keyword || b.isbn===keyword);
-        if(!target) { alert("未找到匹配图书"); return; }
-        if(confirm(`永久删除《${target.title}》？`)) {
-            books = books.filter(b=>b.id!==target.id);
-            document.getElementById('adminDeleteInput').value = '';
-            updateStats(); renderAdminMode(); if(currentLoggedRole === 'student') renderStudentMode();
-            alert("删除成功");
+        const response = await fetch(`${API_URL}/books`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: generateId(), title, author, isbn })
+        });
+        if(response.ok) {
+            document.getElementById('adminBookTitle').value = '';
+            document.getElementById('adminBookAuthor').value = '';
+            document.getElementById('adminBookIsbn').value = '';
+            await renderAdminMode();
+            await updateStats();
+            alert('添加成功');
         }
     }
     
-    // 模式切换 + UI联动
+    // 管理员删除图书
+    async function adminDeleteBook() {
+        const keyword = document.getElementById('adminDeleteInput').value.trim();
+        if(!keyword) { alert("输入书名或ISBN"); return; }
+        const books = await loadBooks();
+        const target = books.find(b => b.title === keyword || b.isbn === keyword);
+        if(!target) { alert("未找到匹配图书"); return; }
+        if(confirm(`永久删除《${target.title}》？`)) {
+            const response = await fetch(`${API_URL}/books/${target.id}`, { method: 'DELETE' });
+            if(response.ok) {
+                document.getElementById('adminDeleteInput').value = '';
+                await renderAdminMode();
+                await updateStats();
+                alert('删除成功');
+            }
+        }
+    }
+    
+    function attachStudentEvents() {
+        document.querySelectorAll('.student-borrow').forEach(btn => {
+            btn.onclick = () => studentBorrow(btn.getAttribute('data-id'));
+        });
+        document.querySelectorAll('.student-return').forEach(btn => {
+            btn.onclick = () => studentReturn(btn.getAttribute('data-id'));
+        });
+    }
+    
+    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    
     let currentUIMode = "student";
     function setUIMode(mode) {
         currentUIMode = mode;
-        const studentPanel = document.getElementById('studentPanel');
-        const adminPanel = document.getElementById('adminPanel');
-        const studentBtn = document.getElementById('studentModeBtn');
-        const adminBtn = document.getElementById('adminModeBtn');
+        document.getElementById('studentPanel').style.display = mode === 'student' ? 'block' : 'none';
+        document.getElementById('adminPanel').style.display = mode === 'admin' ? 'block' : 'none';
         if(mode === 'student') {
-            studentPanel.style.display = 'block';
-            adminPanel.style.display = 'none';
-            studentBtn.classList.add('active');
-            adminBtn.classList.remove('active');
             renderStudentMode();
         } else {
-            studentPanel.style.display = 'none';
-            adminPanel.style.display = 'block';
-            adminBtn.classList.add('active');
-            studentBtn.classList.remove('active');
             renderAdminMode();
         }
     }
     
-    // 登录逻辑
-    function handleLogin() {
+    // 登录
+    async function handleLogin() {
         const selectedRole = document.querySelector('.role-tab.active').getAttribute('data-role');
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value.trim();
-        const cred = USER_CREDENTIALS[selectedRole];
-        if(cred && username === cred.username && password === cred.password) {
-            currentLoggedRole = selectedRole;
-            currentDisplayName = cred.displayName;
-            document.getElementById('welcomeUserMsg').innerText = `欢迎回来，${currentDisplayName} (${selectedRole === 'student' ? '学生模式' : '管理员模式'})`;
-            // 隐藏登录框，显示主系统
+        const response = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, role: selectedRole })
+        });
+        const result = await response.json();
+        if(result.success) {
+            currentLoggedRole = result.role;
+            currentDisplayName = result.displayName;
+            document.getElementById('welcomeUserMsg').innerText = `欢迎回来，${currentDisplayName}`;
             document.getElementById('loginModal').style.display = 'none';
             document.getElementById('mainSystem').style.display = 'block';
-            // 初始化数据 (确保系统有数据)
-            if(books.length === 0) initSampleData();
-            updateStats();
-            // 根据角色限制模式按钮可用性: 学生模式下不能切换到管理员模式？但设计为管理员登录后可切换，学生模式只能看到学生面板并隐藏管理员模式切换入口？不，保留但学生登录后如果点管理员需要权限验证?
-            // 增强: 学生登录时强制只能使用学生模式，且隐藏管理员模式按钮? 更合理: 学生登录时管理员模式按钮不可点击，或者直接移除切换功能。
+            await updateStats();
             if(currentLoggedRole === 'student') {
                 document.getElementById('adminModeBtn').style.display = 'none';
                 setUIMode('student');
@@ -639,12 +351,11 @@
                 document.getElementById('adminModeBtn').style.display = 'inline-flex';
                 setUIMode('admin');
             }
-            // 绑定事件监听
-            bindSystemEvents();
+            bindEvents();
         } else {
             const errDiv = document.getElementById('loginErrorMsg');
             errDiv.style.display = 'block';
-            setTimeout(()=> errDiv.style.display = 'none', 2000);
+            setTimeout(() => errDiv.style.display = 'none', 2000);
         }
     }
     
@@ -654,12 +365,11 @@
         document.getElementById('loginModal').style.display = 'flex';
         document.getElementById('loginUsername').value = '';
         document.getElementById('loginPassword').value = '';
-        document.getElementById('loginErrorMsg').style.display = 'none';
     }
     
-    function bindSystemEvents() {
-        document.getElementById('studentModeBtn').onclick = () => { if(currentLoggedRole === 'admin') setUIMode('student'); else setUIMode('student'); };
-        document.getElementById('adminModeBtn').onclick = () => { if(currentLoggedRole === 'admin') setUIMode('admin'); else alert("权限不足，仅管理员可查看"); };
+    function bindEvents() {
+        document.getElementById('studentModeBtn').onclick = () => setUIMode('student');
+        document.getElementById('adminModeBtn').onclick = () => { if(currentLoggedRole === 'admin') setUIMode('admin'); else alert("权限不足"); };
         document.getElementById('logoutSystemBtn').onclick = logoutSystem;
         document.getElementById('studentSearchInput').oninput = () => renderStudentMode();
         document.getElementById('studentStatusFilter').onchange = () => renderStudentMode();
@@ -670,17 +380,15 @@
         document.getElementById('adminRefreshBtn').onclick = () => renderAdminMode();
     }
     
-    // 角色Tab切换样式
+    // 角色切换
     document.querySelectorAll('.role-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
+        tab.onclick = function() {
+            document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
-        });
+        };
     });
-    document.getElementById('doLoginBtn').addEventListener('click', handleLogin);
-    document.getElementById('loginPassword').addEventListener('keypress', (e) => { if(e.key === 'Enter') handleLogin(); });
-    // 预置初始数据但不显示主界面
-    initSampleData();
+    document.getElementById('doLoginBtn').onclick = handleLogin;
+    document.getElementById('loginPassword').onkeypress = (e) => { if(e.key === 'Enter') handleLogin(); };
 </script>
 </body>
 </html>
