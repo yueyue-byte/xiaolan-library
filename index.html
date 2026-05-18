@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小懒图书馆 | 管理员可查用户借阅记录</title>
+    <title>小懒图书馆 | 含用户注销</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', 'Roboto', sans-serif; }
         body { background: linear-gradient(145deg, #e0eaf5 0%, #cfdfed 100%); min-height: 100vh; padding: 20px; }
@@ -98,6 +98,11 @@
             </div>
             <div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th><th>操作</th></tr></thead><tbody id="studentBookTableBody"></tbody></table></div>
             <div class="card"><h4>📌 我的借阅记录</h4><div id="studentBorrowRecords" class="record-log"></div></div>
+            <div class="card" style="margin-top: 16px;">
+                <h4>⚠️ 账户管理</h4>
+                <button id="deleteMyAccountBtn" class="btn-danger" style="background:#c2412c;">🗑️ 注销我的账户</button>
+                <p style="font-size: 12px; color: gray; margin-top: 8px;">注销后，所有个人借阅记录将保留，但账户无法恢复，请谨慎操作。</p>
+            </div>
         </div>
 
         <!-- 管理员面板 -->
@@ -127,7 +132,7 @@
             </div>
             <div class="card"><h3>📚 图书库存总览</h3><div class="flex-row"><div class="input-group"><input type="text" id="adminSearchInput" placeholder="搜索图书..."></div><button id="adminRefreshBtn" class="btn-outline">刷新</button></div><div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th></tr></thead><tbody id="adminBookTableBody"></tbody></table></div></div>
         </div>
-        <footer>⚡ 支持注册新用户，每人最多借4本书，管理员可查单个用户借阅记录</footer>
+        <footer>⚡ 支持注册、借阅限制4本、管理员查用户借阅记录、用户自主注销</footer>
     </div>
 </div>
 
@@ -339,6 +344,35 @@
         }
     }
 
+    // 学生自主注销账户
+    async function deleteMyAccount() {
+        if (!confirm('⚠️ 确定要永久注销你的账户吗？此操作不可恢复，所有借阅记录将保留但你的用户名会被标记为已注销。\n\n点击“确定”继续。')) return;
+        try {
+            const res = await fetch(API_URL + `/users/${currentUser.username}`, {
+                method: 'DELETE',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Username': currentUser.username
+                }
+            });
+            if (res.ok) {
+                alert('账户已注销，感谢使用！');
+                currentUser = null;
+                document.getElementById('mainSystem').style.display = 'none';
+                document.getElementById('loginModal').style.display = 'flex';
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+                // 重置界面显示登录
+            } else {
+                const err = await res.json();
+                alert('注销失败：' + (err.error || '未知错误'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('网络错误，注销失败');
+        }
+    }
+
     async function adminAddBook() {
         const title = document.getElementById('adminBookTitle').value.trim();
         const author = document.getElementById('adminBookAuthor').value.trim();
@@ -393,6 +427,9 @@
         } else {
             document.getElementById('adminModeBtn').style.display = 'none';
             setUIMode('student');
+            // 显示注销账户按钮（仅学生且非admin可见）
+            const deleteBtn = document.getElementById('deleteMyAccountBtn');
+            if (deleteBtn) deleteBtn.style.display = 'inline-block';
         }
         bindEvents();
     }
@@ -417,11 +454,9 @@
         document.getElementById('adminSearchInput').oninput = () => renderAdminBooks();
         document.getElementById('adminRefreshBtn').onclick = () => renderAdminBooks();
         document.getElementById('refreshUsersBtn').onclick = () => renderUserTable();
-        // 新增查询用户借阅记录
         document.getElementById('adminSearchUserBtn').onclick = () => searchUserBorrowRecords();
-        document.getElementById('adminSearchUser').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') searchUserBorrowRecords();
-        });
+        document.getElementById('adminSearchUser').addEventListener('keypress', (e) => { if (e.key === 'Enter') searchUserBorrowRecords(); });
+        document.getElementById('deleteMyAccountBtn').addEventListener('click', deleteMyAccount);
     }
 
     // 登录注册UI切换
