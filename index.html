@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小懒图书馆 | 注册借阅系统</title>
+    <title>小懒图书馆 | 管理员可查用户借阅记录</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', 'Roboto', sans-serif; }
         body { background: linear-gradient(145deg, #e0eaf5 0%, #cfdfed 100%); min-height: 100vh; padding: 20px; }
         .app-container { max-width: 1400px; margin: 0 auto; }
-        
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 2000; }
         .modal-card { background: white; border-radius: 48px; width: 90%; max-width: 460px; padding: 32px 28px; text-align: center; }
         .modal-card h2 { margin-bottom: 8px; color: #1f5e3a; }
@@ -17,7 +16,6 @@
         .btn-primary { width: 100%; background: #1f5e3a; padding: 14px; border-radius: 40px; color: white; font-weight: bold; border: none; cursor: pointer; }
         .switch-btn { background: none; border: none; color: #1f5e3a; margin-top: 16px; cursor: pointer; text-decoration: underline; }
         .error-msg { color: #c2412c; font-size: 0.75rem; margin-top: 12px; }
-        
         .main-system { display: none; }
         .mode-header { background: white; border-radius: 28px; padding: 20px 28px; margin-bottom: 28px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
         .mode-switch { display: flex; gap: 12px; background: #f0f4f9; padding: 6px; border-radius: 48px; }
@@ -47,7 +45,7 @@
 </head>
 <body>
 <div class="app-container">
-    <!-- 登录/注册模态框 -->
+    <!-- 登录模态框 -->
     <div id="loginModal" class="modal">
         <div class="modal-card">
             <h2>📚 小懒图书馆</h2>
@@ -66,7 +64,7 @@
                 <button id="doRegisterBtn" class="btn-primary">注册</button>
                 <button id="showLoginBtn" class="switch-btn">已有账号？去登录</button>
             </div>
-            <div id="loginErrorMsg" class="error-msg" style="display:none;"></div>
+            <div id="loginErrorMsg" class="error-msg"></div>
         </div>
     </div>
 
@@ -98,7 +96,7 @@
                     <button id="studentResetBtn" class="btn-outline">重置</button>
                 </div>
             </div>
-            <div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th><th>操作</th></thead><tbody id="studentBookTableBody"></tbody></table></div>
+            <div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th><th>操作</th></tr></thead><tbody id="studentBookTableBody"></tbody></table></div>
             <div class="card"><h4>📌 我的借阅记录</h4><div id="studentBorrowRecords" class="record-log"></div></div>
         </div>
 
@@ -112,30 +110,41 @@
                 <div class="table-wrapper"><table class="book-table"><thead><tr><th>用户名</th><th>昵称</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead><tbody id="userTableBody"></tbody></table></div>
                 <div style="margin-top:12px;"><button id="refreshUsersBtn" class="btn-outline">刷新用户列表</button></div>
             </div>
-            <div class="card"><h3>📜 全馆借阅记录</h3><div id="allBorrowRecords" class="record-log"></div></div>
+            <div class="card"><h3>📜 借阅记录查询</h3>
+                <div class="flex-row" style="margin-bottom: 12px;">
+                    <div class="input-group" style="flex:2;">
+                        <label>按用户查询借阅记录</label>
+                        <input type="text" id="adminSearchUser" placeholder="输入用户名（如 student）">
+                    </div>
+                    <button id="adminSearchUserBtn" class="btn-outline">🔍 查询该用户</button>
+                </div>
+                <div id="userBorrowRecords" class="record-log" style="margin-bottom: 20px;">
+                    <div style="padding:12px; color:#888;">输入用户名后点击查询，将显示该用户的借阅记录</div>
+                </div>
+                <div style="border-top: 1px solid #eee; margin: 10px 0;"></div>
+                <h4>全馆所有借阅记录</h4>
+                <div id="allBorrowRecords" class="record-log"></div>
+            </div>
             <div class="card"><h3>📚 图书库存总览</h3><div class="flex-row"><div class="input-group"><input type="text" id="adminSearchInput" placeholder="搜索图书..."></div><button id="adminRefreshBtn" class="btn-outline">刷新</button></div><div class="table-wrapper"><table class="book-table"><thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>借阅人</th></tr></thead><tbody id="adminBookTableBody"></tbody></table></div></div>
         </div>
-        <footer>⚡ 支持注册新用户，每人最多借4本书，数据云端同步</footer>
+        <footer>⚡ 支持注册新用户，每人最多借4本书，管理员可查单个用户借阅记录</footer>
     </div>
 </div>
 
 <script>
     // 请将下面地址替换为您的 Railway 后端地址（保持 /api 结尾）
     const API_URL = 'https://xiaolan-library-production-0e34.up.railway.app/api';
-    let currentUser = null; // { username, role, displayName }
+    let currentUser = null;
 
-    // 辅助函数
     function getToday() { return new Date().toISOString().slice(0,10); }
     function generateId() { return Date.now() + '-' + Math.random().toString(36).substring(2, 8); }
     function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m] || m)); }
 
-    // 通用 API 调用
     async function apiCall(url, options) {
         const res = await fetch(API_URL + url, options);
         return res.json();
     }
 
-    // 登录
     async function login(username, password) {
         return await apiCall('/login', {
             method: 'POST',
@@ -144,7 +153,6 @@
         });
     }
 
-    // 注册
     async function register(username, password, nickname) {
         return await apiCall('/register', {
             method: 'POST',
@@ -153,13 +161,11 @@
         });
     }
 
-    // 获取所有用户（管理员）
     async function fetchUsers() {
         const res = await fetch(API_URL + '/users');
         return res.json();
     }
 
-    // 重置密码
     async function resetUserPassword(username, newPassword) {
         const res = await fetch(API_URL + `/users/${username}/reset`, {
             method: 'PUT',
@@ -169,19 +175,16 @@
         return res.json();
     }
 
-    // 删除用户
     async function deleteUser(username) {
         const res = await fetch(API_URL + `/users/${username}`, { method: 'DELETE' });
         return res.json();
     }
 
-    // 加载图书
     async function loadBooks() {
         const res = await fetch(API_URL + '/books');
         return res.json();
     }
 
-    // 更新统计
     async function updateStats() {
         const books = await loadBooks();
         document.getElementById('totalBooksSpan').innerText = books.length;
@@ -189,7 +192,6 @@
         document.getElementById('borrowedBooksSpan').innerText = books.filter(b => b.status === 'borrowed').length;
     }
 
-    // 学生模式渲染
     async function renderStudentMode() {
         let books = await loadBooks();
         const searchTerm = document.getElementById('studentSearchInput')?.value.trim().toLowerCase() || '';
@@ -251,7 +253,6 @@
         document.querySelectorAll('.student-return').forEach(btn => btn.onclick = () => studentReturn(btn.getAttribute('data-id')));
     }
 
-    // 管理员模式渲染
     async function renderAdminMode() {
         await renderAdminBooks();
         await renderUserTable();
@@ -311,6 +312,33 @@
         }
     }
 
+    // 新增：管理员按用户名查询借阅记录
+    async function searchUserBorrowRecords() {
+        const username = document.getElementById('adminSearchUser').value.trim();
+        if (!username) {
+            alert('请输入用户名');
+            return;
+        }
+        try {
+            const res = await fetch(API_URL + `/records/${encodeURIComponent(username)}`);
+            const records = await res.json();
+            const container = document.getElementById('userBorrowRecords');
+            if (records.length === 0) {
+                container.innerHTML = `<div style="padding:12px;">📭 用户 “${escapeHtml(username)}” 暂无借阅记录</div>`;
+            } else {
+                let html = `<div style="padding:6px 12px; background:#eef2f6; font-weight:bold;">用户 “${escapeHtml(username)}” 的借阅记录</div>`;
+                records.forEach(r => {
+                    const status = r.return_date ? `✅ 已归还 (${r.return_date})` : `🔴 未归还 (借于 ${r.borrow_date})`;
+                    html += `<div class="record-item"><span><strong>${escapeHtml(r.book_title)}</strong></span><span>${status}</span></div>`;
+                });
+                container.innerHTML = html;
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('userBorrowRecords').innerHTML = '<div style="padding:12px; color:red;">查询失败，请稍后重试</div>';
+        }
+    }
+
     async function adminAddBook() {
         const title = document.getElementById('adminBookTitle').value.trim();
         const author = document.getElementById('adminBookAuthor').value.trim();
@@ -353,7 +381,6 @@
         else renderAdminMode();
     }
 
-    // 登录后的初始化
     async function initAfterLogin(userData) {
         currentUser = userData;
         document.getElementById('welcomeUserMsg').innerText = `欢迎回来，${userData.displayName} (${userData.role === 'admin' ? '管理员' : '学生'})`;
@@ -390,9 +417,14 @@
         document.getElementById('adminSearchInput').oninput = () => renderAdminBooks();
         document.getElementById('adminRefreshBtn').onclick = () => renderAdminBooks();
         document.getElementById('refreshUsersBtn').onclick = () => renderUserTable();
+        // 新增查询用户借阅记录
+        document.getElementById('adminSearchUserBtn').onclick = () => searchUserBorrowRecords();
+        document.getElementById('adminSearchUser').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchUserBorrowRecords();
+        });
     }
 
-    // UI 切换：登录/注册
+    // 登录注册UI切换
     document.getElementById('showRegisterBtn').onclick = () => {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('registerForm').style.display = 'block';
